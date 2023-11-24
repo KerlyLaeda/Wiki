@@ -1,4 +1,5 @@
-from django.shortcuts import render
+from django import forms
+from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http import HttpResponseRedirect
 from markdown2 import Markdown
@@ -7,7 +8,18 @@ from random import choice
 from . import util
 
 
-# Convert markdown to html
+class EntryForm(forms.Form):
+    title = forms.CharField(
+        max_length=35,
+        required=True,
+        widget=forms.TextInput(attrs={"placeholder": "Title"}))
+
+    content = forms.CharField(
+        required=True,
+        widget=forms.Textarea(attrs={"placeholder": "Content"}))
+
+
+# Convert Markdown to HTML
 def md_to_html(title):
     page = util.get_entry(title)
     markdowner = Markdown()
@@ -54,40 +66,41 @@ def search():
 # Create new entry
 def add(request):
     if request.method == "POST":
-        title = request.POST['title']
-        content = request.POST['content']
+        form = EntryForm(request.POST)
+        if form.is_valid():
+            title = form.cleaned_data["title"]
+            content = form.cleaned_data["content"]
 
-        # Check if an entry already exists with the provided title
-        existing = util.get_entry(title)
-        if existing:
+            # If the entry exists with the provided title
+            if util.get_entry(title):
+                return render(request, "encyclopedia/errors.html", {
+                    "error": "This page already exists!"
+                })
 
-            # Throw an error if it does
-            return render(request, "encyclopedia/errors.html", {
-                "error": "This page already exists!"
-            })
-
-        # Otherwise, save and redirect to newly created page
-        else:
-            converted_page = md_to_html(title)
             util.save_entry(title, content)
 
-            return render(request, "encyclopedia/entry.html", {
-                "title": title,
-                "content": converted_page
+            # Redirect to the same page
+            return redirect("entry", title)
+
+        else:
+            return render(request, "encyclopedia/add.html", {
+                "form": form
             })
 
-    return render(request, "encyclopedia/add.html")
+    return render(request, "encyclopedia/add.html", {
+        "form": EntryForm
+    })
 
 
 # Edit entry
-def edit(request, title):
-    if request.method == "POST":
-        #title = request.POST['title']
-        content = util.get_entry(title)
-        return render(request, "encyclopedia/edit.html", {
-            "title": title,
-            "content": content
-        })
+# def edit(request, title):
+#     if request.method == "POST":
+#         #title = request.POST['title']
+#         content = util.get_entry(title)
+#         return render(request, "encyclopedia/edit.html", {
+#             "title": title,
+#             "content": content
+#         })
 
 
 def random_page(request):
