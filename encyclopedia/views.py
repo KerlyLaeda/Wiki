@@ -1,7 +1,5 @@
 from django import forms
 from django.shortcuts import render, redirect
-from django.urls import reverse
-from django.http import HttpResponseRedirect
 from markdown2 import Markdown
 from random import choice
 
@@ -55,12 +53,38 @@ def entry(request, title):
 
 
 # Search for an entry
-def search():
-    pass
-    # if total match:
-        # redirect to entry
-    # sub in query:
-        # list all with sub
+def search(request):
+    if request.method == "POST":
+        entry_search = request.POST.get('q', '')
+        entries = util.list_entries()
+        if entries is not None:
+
+            # If the query matches the name of an encyclopedia entry, redirect to that entry’s page
+            match = []
+            for entry in entries:
+                if entry.lower() == entry_search.lower():
+                    match.append(entry)
+                    return redirect("entry", match[0])
+
+            # If search result contains the query as a substring, redirect to
+            # a search results page that displays a list of all matching entries
+            else:
+                results = []
+                for entry in entries:
+                    if entry_search.lower() in entry.lower():
+                        results.append(entry)
+
+                # If no matches found
+                if len(results) == 0:
+                    return render(request, "encyclopedia/search.html", {
+                        "no_results": True,
+                        "query": entry_search
+                    })
+                return render(request, "encyclopedia/search.html", {
+                    "results": results
+                })
+
+    return render(request, "encyclopedia/search.html")
 
 
 # Create new entry
@@ -79,7 +103,7 @@ def add(request):
 
             util.save_entry(title, content)
 
-            # Redirect to the same page
+            # Redirect to newly created page
             return redirect("entry", title)
 
         else:
@@ -93,14 +117,23 @@ def add(request):
 
 
 # Edit entry
-# def edit(request, title):
-#     if request.method == "POST":
-#         #title = request.POST['title']
-#         content = util.get_entry(title)
-#         return render(request, "encyclopedia/edit.html", {
-#             "title": title,
-#             "content": content
-#         })
+def edit(request, title):
+    if request.method == "POST":
+        form = EntryForm(request.POST)
+        if form.is_valid():
+            title = form.cleaned_data["title"]
+            content = form.cleaned_data["content"]
+            util.save_entry(title=title, content=content)
+            return redirect("entry", title)
+
+        else:
+            return render(request, "encyclopedia/edit.html", {
+                "form": form
+            })
+
+    return render(request, "encyclopedia/edit.html", {
+        "form": EntryForm
+    })
 
 
 def random_page(request):
