@@ -41,7 +41,7 @@ def entry(request, title):
     # If no such page found, display an error
     if converted_page is None:
         return render(request, "encyclopedia/errors.html", {
-            "error": "Page not found :("
+            "error": "Entry does not exist :("
         })
 
     # If page exists, render it
@@ -76,10 +76,14 @@ def search(request):
 
                 # If no matches found
                 if len(results) == 0:
-                    return render(request, "encyclopedia/search.html", {
-                        "no_results": True,
-                        "query": entry_search
+                    # return render(request, "encyclopedia/search.html", {
+                    #     "no_results": True,
+                    #     "query": entry_search
+                    # })
+                    return render(request, "encyclopedia/errors.html", {
+                        "error": f"No results for {entry_search} :("
                     })
+
                 return render(request, "encyclopedia/search.html", {
                     "results": results
                 })
@@ -131,8 +135,11 @@ def edit(request, title):
                 "form": form
             })
 
+    # If it's a GET request
+    existing_content = util.get_entry(title)
     return render(request, "encyclopedia/edit.html", {
-        "form": EntryForm
+        "title": title,
+        "content": existing_content
     })
 
 
